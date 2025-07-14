@@ -1,0 +1,16 @@
+FROM cnstark/pytorch:2.1.0-py3.10.15-cuda12.1.0-devel-ubuntu22.04
+
+WORKDIR /app
+COPY . .
+
+WORKDIR /app/dfine/
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y git && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.cache/pip
+    
+
