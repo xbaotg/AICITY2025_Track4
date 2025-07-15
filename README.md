@@ -65,10 +65,23 @@ docker run -it \
 Once inside the container, start the training process by running:
 
 ```bash
-bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600.yml /data/ckpts/dfine_l_obj2coco_e25.pth
+# Pre-training
+bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_pre.yml /data/ckpts/dfine_l_obj2coco_e25.pth
+
+# Fine-tuning
+bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_ft.yml trained/pretrained/last.pth
 ```
 
 This command launches training with the specified configuration and checkpoint.
+
+
+
+---
+
+docker run -it -v /mlcv3/WorkingSpace/Personal/baotg/AICity25/Track4/release/data:/data --gpus all --name test_track4_jetson track4_jetson:latest bash
+
+/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data//L_aip_vip_fsh_1600.engine --fp16
+
 
 <!-- # 🐳 Docker Setup for AI City ICCV 2025 Track 4
 

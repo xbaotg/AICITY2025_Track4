@@ -1,13 +1,13 @@
 __include__:
   [
-  "../dataset/aip_vip_fisheye.yml",
+  "../dataset/ft.yml",
   "../runtime.yml",
   "include/dataloader_1600.yml",
   "include/optimizer.yml",
   "include/dfine_hgnetv2_1600.yml",
   ]
 
-output_dir: ./trained/L_aip_vip_fsh_1600
+output_dir: ./trained/finetuned/
 
 
 DFINE:
