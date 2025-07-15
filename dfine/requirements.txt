@@ -7,3 +7,5 @@ scipy
 calflops
 transformers
 loguru
+numpy<2
+matplotlib

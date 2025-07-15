@@ -12,7 +12,3 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /root/.cache/pip
-
-
-# download the pre-trained model
-RUN cd /app/data/ckpts && wget https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth

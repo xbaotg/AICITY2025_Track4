@@ -11,8 +11,8 @@ train_dataloader:
   type: DataLoader
   dataset:
     type: CocoDetection
-    img_folder: ../../../data/collections/prepared/aip_vip_fisheye_dfine/images
-    ann_file: ../../../data/collections/prepared/aip_vip_fisheye_dfine/train.json
+    img_folder: /data/training/images
+    ann_file: /data/training/train.json
     return_masks: False
     transforms:
       type: Compose
@@ -27,8 +27,8 @@ val_dataloader:
   type: DataLoader
   dataset:
     type: CocoDetection
-    img_folder: ../../../data/collections/prepared/aip_vip_fisheye_dfine/images
-    ann_file: ../../../data/collections/prepared/aip_vip_fisheye_dfine/val.json
+    img_folder: /data/training/images
+    ann_file: /data/training/val.json
     return_masks: False
     transforms:
       type: Compose

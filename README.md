@@ -1,4 +1,76 @@
-# 🐳 Docker Setup for AI City ICCV 2025 Track 4
+# 🎯 Model Training Setup & Execution Guide
+
+This guide outlines the full process for setting up the data structure, building a Docker environment, and executing training within a containerized environment.
+
+---
+
+## 📁 Directory Structure
+
+Set up the following directory structure to organize your model checkpoints and training data:
+
+```
+data/
+├── ckpts/
+│   └── dfine_l_obj2coco_e25.pth         # Pretrained checkpoint
+└── training/
+    ├── images/
+    │   └── camera10_A_354.png           # Example training image
+    ├── train.json                       # Training annotations
+    ├── val.json                         # Validation annotations
+    └── test.json                        # Test annotations
+```
+
+### 🔗 Downloads
+
+* **📦 Pretrained Checkpoint**
+  Download the required model checkpoint from:
+  [dfine\_l\_obj2coco\_e25.pth](https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth)
+
+* **📁 Training Data**
+  Download the dataset (including `images/`, `train.json`, `val.json`, `test.json`) from:
+  `[Insert Your Dataset URL Here]`
+
+> ⚠️ Make sure to place the downloaded checkpoint under `data/ckpts/` and the dataset under `data/training/`.
+
+---
+
+## 🐳 Build the Docker Image
+
+Use the following command to build the Docker image from the provided Dockerfile:
+
+```bash
+docker build -t track4 -f Dockerfile.train .
+```
+
+---
+
+## 🚀 Run the Docker Container
+
+Mount the `data/` directory into the container and enable GPU access:
+
+```bash
+docker run -it \
+  -v /path/to/data:/data \
+  --gpus all \
+  --name test_track4 \
+  track4:latest bash
+```
+
+> 💡 Replace `/path/to/data` with the absolute path to your `data/` directory.
+
+---
+
+## 🏋️‍♂️ Launch the Training
+
+Once inside the container, start the training process by running:
+
+```bash
+bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600.yml /data/ckpts/dfine_l_obj2coco_e25.pth
+```
+
+This command launches training with the specified configuration and checkpoint.
+
+<!-- # 🐳 Docker Setup for AI City ICCV 2025 Track 4
 
 This guide provides a quick start tutorial for container submissions using a fine-tuned YOLOv11n model as a reference.
 
@@ -83,4 +155,4 @@ docker run -it --ipc=host --runtime=nvidia \
  - A dataset folder named Fisheye8K located inside /data.
 
  - Trained models and output logs will be saved to /models.
-
+ -->
