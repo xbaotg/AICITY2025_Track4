@@ -23,11 +23,11 @@ data/
 
 ### 🔗 Downloads
 
-* **📦 Pretrained Checkpoint**
+- **📦 Pretrained Checkpoint**
   Download the required model checkpoint from:
-  [dfine\_l\_obj2coco\_e25.pth](https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth)
+  [dfine_l_obj2coco_e25.pth](https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth)
 
-* **📁 Training Data**
+- **📁 Training Data**
   Download the dataset (including `images/`, `train.json`, `val.json`, `test.json`) from:
   `[Insert Your Dataset URL Here]`
 
@@ -75,102 +75,71 @@ bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_ft.yml trained/pretrained/las
 
 This command launches training with the specified configuration and checkpoint.
 
+---
 
+# 🚀 Inference Guide (Jetson)
+
+This guide outlines the process for setting up the Docker environment on a Jetson device, converting the model, and running inference.
 
 ---
 
+## 📁 Directory Structure
+
+Ensure your `data` directory is structured as follows. The `.onnx` model file is required for conversion, and the `testset` contains the images for inference.
+
+```
+data/
+├── testset/
+│   └── image001.png                # Example test image
+├── L_aip_vip_fsh_1600.onnx         # ONNX model for conversion
+└── L_aip_vip_fsh_1600.engine       # Output TensorRT engine (generated later)
+```
+
+> ⚠️ Place your `.onnx` model and `testset/` images inside the `data/` directory before starting.
+
+---
+
+## 🐳 Build the Docker Image
+
+Use the following command to build the Docker image specifically for the Jetson environment:
+
+```bash
 docker build -t track4_jetson -f Dockerfile.jetson .
-
-docker run -it -v /mlcv3/WorkingSpace/Personal/baotg/AICity25/Track4/release/data:/data --ipc=host --runtime=nvidia --name test_track4_jetson track4_jetson:latest bash
-
-/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data/L_aip_vip_fsh_1600.engine --fp16
-
-python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data/L_aip_vip_fsh_1600.engine
-
-
-<!-- # 🐳 Docker Setup for AI City ICCV 2025 Track 4
-
-This guide provides a quick start tutorial for container submissions using a fine-tuned YOLOv11n model as a reference.
-
-**You should develop your own implementations of the get_model, preprocess_image, and postprocess_results functions in utils.py for your submission. Prize winners need to place their pretraining data (if applicable) and models in the shared Google Drive and upload training and evaluation containers on Docker Hub. Your training and evaluation scripts inside the container should load models from the mounted /models directory and the data from the /data directory.**
-
-# Evaluation Container Instruction
-
-## 🔹 Pull the Prebuilt Docker Image
-
-Start by pulling the prebuilt Docker image designed for Jetson devices:
-
-```bash
-docker pull ganzobtn/aicity_iccv_2025_track4_jetson:latest
-```
-## 🔹 Build Image Locally (Optional)
-If you'd prefer to build the Docker image locally:
-
-```bash
-docker build -f Dockerfile.jetson -t ganzobtn/aicity_iccv_2025_track4_jetson:latest .
 ```
 
-## 🔹 Run the Docker container
-
-```bash
-IMAGE="ganzobtn/aicity_iccv_2025_track4_jetson:latest"
-DATA_DIR="/path/to/your/data"
-```
-
-```bash
-docker run -it --ipc=host --runtime=nvidia -v ${DATA_DIR}:/data ${IMAGE}
-```
-
-📁 Expected Directory Structure
-
-The `run_evaluation_jetson.py` script inside the container expects the following structure:
-
-- `/data/FishEye1K_eval/` Contains the groundtruth.json file, evaluation images and corresponding annotation files.
-
-- `models/yolo11n_fisheye8k.pt`  
-  The fine-tuned YOLOv11n model file used for inference.
-  
-
-
-# Training Container Instruction
-
-This section provides a getting started guide for setting up and running the training Docker container for the challenge, which uses a YOLOv11n model finetuning pipeline.
-
-## 🔹 Pull Prebuilt Docker Image 
-
-You can use the prebuilt Docker image available on Docker Hub:
-
-```bash
-docker pull ganzobtn/aicity_iccv_2025_track4_train:latest
-```
 ---
 
-## 🔹 Build the Docker Image Locally (Optional)
-If you'd prefer to build the image from the provided Dockerfile:
+## 🛰️ Run the Docker Container
+
+Mount the `data/` directory and run the container with NVIDIA runtime access:
 
 ```bash
-docker build -f Dockerfile.train -t ganzobtn/aicity_iccv_2025_track4_train:latest .
+docker run -it \
+  -v /path/to/data:/data \
+  --ipc=host \
+  --runtime=nvidia \
+  --name test_track4_jetson \
+  track4_jetson:latest bash
 ```
 
-## 🔹 Run the Docker Container
-Set your local paths and run the container:
+> 💡 Replace `/path/to/data` with the absolute path to your `data/` directory.
+
+---
+
+## ⚙️ Convert ONNX to TensorRT Engine
+
+Once inside the container, convert the `.onnx` model to a highly optimized TensorRT engine. This command uses FP16 precision for better performance.
 
 ```bash
-IMAGE="ganzobtn/aicity_iccv_2025_track4_train:latest"
-
-DATA_DIR="/path/to/your/data"
-MODEL_DIR="/path/to/your/models"
-
-docker run -it --ipc=host --runtime=nvidia \
-  -v ${DATA_DIR}:/data \
-  -v ${MODEL_DIR}:/models \
-  ${IMAGE}
+/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data/L_aip_vip_fsh_1600.engine --fp16
 ```
 
-📁 Expected Directory Structure
- run_train_yolo.py script inside the container expects the following structure:
+---
 
- - A dataset folder named Fisheye8K located inside /data.
+## 🏁 Launch Inference
 
- - Trained models and output logs will be saved to /models.
- -->
+Finally, run the evaluation script using the newly generated TensorRT engine:
+
+```bash
+python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data/L_aip_vip_fsh_1600.engine
+```

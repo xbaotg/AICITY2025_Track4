@@ -85,50 +85,52 @@ def main():
     print(f"FPS: {fps:.2f}")
     print(f"Normalized FPS: {normfps:.4f}")
 
-    # create output
+    # -- create output
+
     # internal testing
-    cls_mapping = {
-        0: "bus",
-        1: "bike",
-        2: "car",
-        3: "pedestrian",
-        4: "truck",
-    }
+    # cls_mapping = {
+    #     0: "bus",
+    #     1: "bike",
+    #     2: "car",
+    #     3: "pedestrian",
+    #     4: "truck",
+    # }
 
-    predictions_json = {}
-    for image_path, results in predictions:
-        image_id = Path(image_path).name
-        predictions_json[image_id] = []
-        for pred in results:
-            predictions_json[image_id].append(
-                {
-                    "bbox": pred["bbox"],
-                    "conf": pred["conf"],
-                    "cls": cls_mapping[pred["cls"]],
-                }
-            )
-
-    with open(args.output_json, "w") as f:
-        json.dump(predictions_json, f, indent=2)
-
-    # standard output
-    # predictions_json = []
+    # predictions_json = {}
     # for image_path, results in predictions:
-    #     image_id = Path(image_path).stem
-    #     image_id = changeId(image_id)
-
-        # for pred in results:
-    #         predictions_json.append(
+    #     image_id = Path(image_path).name
+    #     predictions_json[image_id] = []
+    #     for pred in results:
+    #         predictions_json[image_id].append(
     #             {
-    #                 "image_id": image_id,
-    #                 "bbox": box,
-    #                 "score": score,
-    #                 "category_id": cls,
+    #                 "bbox": pred["bbox"],
+    #                 "conf": pred["conf"],
+    #                 "cls": cls_mapping[pred["cls"]],
     #             }
     #         )
 
-    # with open(args.output_json, "w") as f:
-    #     json.dump(predictions_json, f, indent=2)
+    # standard output
+    predictions_json = []
+    for image_path, results in predictions:
+        image_id = Path(image_path).stem
+        image_id = changeId(image_id)
+
+        for pred in results:
+            box = pred["bbox"]
+            score = pred["conf"]
+            cls = pred["cls"]
+
+            predictions_json.append(
+                {
+                    "image_id": image_id,
+                    "bbox": box,
+                    "score": score,
+                    "category_id": cls,
+                }
+            )
+            
+    with open(args.output_json, "w") as f:
+        json.dump(predictions_json, f, indent=2)
 
 
 if __name__ == "__main__":
