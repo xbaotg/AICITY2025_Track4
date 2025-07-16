@@ -10,6 +10,7 @@ Set up the following directory structure to organize your model checkpoints and 
 
 ```
 data/
+├── testset/                             # Images used for testing
 ├── ckpts/
 │   └── dfine_l_obj2coco_e25.pth         # Pretrained checkpoint
 └── training/
@@ -78,9 +79,13 @@ This command launches training with the specified configuration and checkpoint.
 
 ---
 
-docker run -it -v /mlcv3/WorkingSpace/Personal/baotg/AICity25/Track4/release/data:/data --gpus all --name test_track4_jetson track4_jetson:latest bash
+docker build -t track4_jetson -f Dockerfile.jetson .
 
-/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data//L_aip_vip_fsh_1600.engine --fp16
+docker run -it -v /mlcv3/WorkingSpace/Personal/baotg/AICity25/Track4/release/data:/data --ipc=host --runtime=nvidia --name test_track4_jetson track4_jetson:latest bash
+
+/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data/L_aip_vip_fsh_1600.engine --fp16
+
+python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data/L_aip_vip_fsh_1600.engine
 
 
 <!-- # 🐳 Docker Setup for AI City ICCV 2025 Track 4

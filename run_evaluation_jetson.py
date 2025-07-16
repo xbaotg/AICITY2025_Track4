@@ -3,7 +3,8 @@ import time
 import argparse
 import json
 from tqdm import tqdm
-from .utils import get_model
+from pathlib import Path
+from utils import get_model, changeId
 import json
 import cv2
 
@@ -58,8 +59,13 @@ def main():
             continue
 
         t0 = time.time()
+
+        is_night = False
+        if "_E_" in str(image_path) or "_N_" in str(image_path):
+            is_night = True
+
         # img = preprocess_image(img)
-        results = model.inference(img)
+        results = model.inference(img, is_night=is_night)
         # results = postprocess_result(results)  # [boxes, scores, classes]
         predictions.append((image_path, results))
         t3 = time.time()
@@ -67,22 +73,62 @@ def main():
 
     end_time = time.time()
     elapsed_time = end_time - start_time
+    fps = len(image_files) / total_time
+    normfps = min(fps, args.max_fps) / args.max_fps
 
     print(f"Processed {len(image_files)} images in {elapsed_time:.2f} seconds.")
     print(f"Avg Processing Time           : {total_time/len(image_files)*1000:.2f} ms")
-
-    predictions_json = []
-    with open(args.output_json, "w") as f:
-        json.dump(predictions_json, f, indent=2)
-
-    fps = len(image_files) / total_time
-    normfps = min(fps, args.max_fps) / args.max_fps
 
     print("\n--- Evaluation Complete ---")
     print(f"Total time: {elapsed_time:.2f} seconds")
     print(f"Total processing time: {total_time:.2f} seconds")
     print(f"FPS: {fps:.2f}")
     print(f"Normalized FPS: {normfps:.4f}")
+
+    # create output
+    # internal testing
+    cls_mapping = {
+        0: "bus",
+        1: "bike",
+        2: "car",
+        3: "pedestrian",
+        4: "truck",
+    }
+
+    predictions_json = {}
+    for image_path, results in predictions:
+        image_id = Path(image_path).name
+        predictions_json[image_id] = []
+        for pred in results:
+            predictions_json[image_id].append(
+                {
+                    "bbox": pred["bbox"],
+                    "conf": pred["conf"],
+                    "cls": cls_mapping[pred["cls"]],
+                }
+            )
+
+    with open(args.output_json, "w") as f:
+        json.dump(predictions_json, f, indent=2)
+
+    # standard output
+    # predictions_json = []
+    # for image_path, results in predictions:
+    #     image_id = Path(image_path).stem
+    #     image_id = changeId(image_id)
+
+        # for pred in results:
+    #         predictions_json.append(
+    #             {
+    #                 "image_id": image_id,
+    #                 "bbox": box,
+    #                 "score": score,
+    #                 "category_id": cls,
+    #             }
+    #         )
+
+    # with open(args.output_json, "w") as f:
+    #     json.dump(predictions_json, f, indent=2)
 
 
 if __name__ == "__main__":

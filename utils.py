@@ -5,14 +5,18 @@ import cv2
 import numpy as np
 import tensorrt as trt
 import torch
-from models.base import BaseModel
+
+# custom_conf = {
+#     0: 0.9,
+#     1: 0.9,
+#     2: 0.9,
+#     3: 0.9,
+#     4: 0.9,
+# }
+night_conf = 0.1  # Confidence boost for night images
 
 
-class DFineTRTModel(BaseModel):
-    """
-    Optimized Class for the DFine model using TensorRT, corrected for dynamic shapes.
-    """
-
+class DFineTRTModel:
     _NP_TO_TORCH_DTYPE_MAP = {
         np.float32: torch.float32,
         np.float16: torch.float16,
@@ -60,25 +64,13 @@ class DFineTRTModel(BaseModel):
         return self._get_io_names(trt.TensorIOMode.OUTPUT)
 
     def allocate_buffers(self):
-        """
-        Allocates GPU memory for I/O buffers based on the engine's max profile shape.
-        This should be called once after loading the engine.
-        """
         print("Allocating GPU buffers based on max profile shapes...")
         self.bindings_gpu_ptrs = [None] * self.engine.num_io_tensors
-
-        # Use the active optimization profile (usually 0).
-        # profile_index = (
-        #     self.engine.active_optimization_profile
-        #     if self.engine.active_optimization_profile >= 0
-        #     else 0
-        # )
-        profile_index = 0  # Assuming single profile for simplicity
+        profile_index = 0
 
         for i in range(self.engine.num_io_tensors):
             name = self.engine.get_tensor_name(i)
             profile_shapes = self.engine.get_tensor_profile_shape(name, profile_index)
-            # Allocate buffer using the maximum shape from the profile.
             max_shape = profile_shapes[2]  # Index 2 is max_shape
 
             print(f"  - Allocating buffer for '{name}' with max shape: {max_shape}")
@@ -108,7 +100,6 @@ class DFineTRTModel(BaseModel):
         self.input_names = self.get_input_names()
         self.output_names = self.get_output_names()
 
-        # Allocate buffers robustly based on the engine's max profile shape.
         self.allocate_buffers()
 
         if type_class == 5:
@@ -129,28 +120,22 @@ class DFineTRTModel(BaseModel):
         )
         return im_tensor
 
-    def inference(self, img_np: np.ndarray, conf_thres: float = 0.25):
-        # 1. Preprocess the image
-        # Set original image size (H, W). np.shape is (H, W, C).
-        self.orig_size_gpu[0, 0] = img_np.shape[0]
-        self.orig_size_gpu[0, 1] = img_np.shape[1]
+    def inference(self, img_np: np.ndarray, conf_thres: float = 0.94, is_night: bool = False):
+        self.orig_size_gpu[0, 0] = img_np.shape[1]
+        self.orig_size_gpu[0, 1] = img_np.shape[0]
         im_data_processed = self.preprocess_image(img_np)
 
-        # 2. Prepare input dictionary
         input_feed = {
             self.input_names[0]: im_data_processed,
             self.input_names[1]: self.orig_size_gpu,
         }
 
-        # 3. Set dynamic input shapes and copy data to GPU buffers
         for name, tensor_data in input_feed.items():
             self.context.set_input_shape(name, tensor_data.shape)
             self.gpu_buffers[name].copy_(tensor_data)
 
-        # 4. Run inference
         self.context.execute_v2(bindings=self.bindings_gpu_ptrs)
 
-        # 5. Get outputs by slicing the buffers to the actual output shape
         output_tensors = {}
         for name in self.output_names:
             output_shape = self.context.get_tensor_shape(name)
@@ -161,10 +146,23 @@ class DFineTRTModel(BaseModel):
         if not output_tensors:
             return []
 
-        # 6. Post-process the valid results
+        small_box_size = 64
+        small_box_boost = 0.02
+        large_box_boost = -0.02
+        large_box_size = 192
+
         boxes = output_tensors["boxes"][0].cpu()
         labels = output_tensors["labels"][0].cpu()
         scores = output_tensors["scores"][0].cpu()
+        
+        if is_night:
+            scores += night_conf
+
+        box_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+        small_boxes = box_area < (small_box_size * small_box_size)
+        large_boxes = box_area > (large_box_size * large_box_size)
+        scores[small_boxes] = np.minimum(1.0, scores[small_boxes] + small_box_boost)
+        scores[large_boxes] = np.maximum(0.0, scores[large_boxes] + large_box_boost)
 
         valid_indices = scores >= conf_thres
         filtered_boxes = boxes[valid_indices].tolist()
@@ -176,12 +174,26 @@ class DFineTRTModel(BaseModel):
             for b, c, s in zip(filtered_boxes, filtered_labels, filtered_scores)
         ]
 
-        # print(results)
+        if len(results) > 0:
+            final_results = []
+            class_results = {}
+            for i, result in enumerate(results):
+                cls = result["cls"]
+                if cls not in class_results:
+                    class_results[cls] = []
+                class_results[cls].append((i, result))
+
+            for cls, cls_data in class_results.items():
+                indices, cls_boxes = zip(*cls_data)
+                all_boxes = np.array([x["bbox"] for x in cls_boxes], dtype=np.float32)
+                pick = non_max_suppression_fast(all_boxes, 0.98)
+                final_results.extend([cls_boxes[i] for i in pick])
+
+            return final_results
 
         return results
 
     def __del__(self):
-        # Clean up CUDA memory and TensorRT objects
         for buffer in self.gpu_buffers.values():
             del buffer
         if hasattr(self, "context"):
@@ -238,3 +250,51 @@ def changeId(id):
     frameId = int(id.split("_")[2])
     imageId = int(str(cameraId) + str(sceneId) + str(frameId))
     return imageId
+
+
+def non_max_suppression_fast(boxes, overlapThresh):
+    # if there are no boxes, return an empty list
+    if len(boxes) == 0:
+        return []
+    # if the bounding boxes integers, convert them to floats --
+    # this is important since we'll be doing a bunch of divisions
+    if boxes.dtype.kind == "i":
+        boxes = boxes.astype("float")
+    # initialize the list of picked indexes
+    pick = []
+    # grab the coordinates of the bounding boxes
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2] + x1
+    y2 = boxes[:, 3] + y1
+    # compute the area of the bounding boxes and sort the bounding
+    # boxes by the bottom-right y-coordinate of the bounding box
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    idxs = np.argsort(y2)
+    # keep looping while some indexes still remain in the indexes
+    # list
+    while len(idxs) > 0:
+        # grab the last index in the indexes list and add the
+        # index value to the list of picked indexes
+        last = len(idxs) - 1
+        i = idxs[last]
+        pick.append(i)
+        # find the largest (x, y) coordinates for the start of
+        # the bounding box and the smallest (x, y) coordinates
+        # for the end of the bounding box
+        xx1 = np.maximum(x1[i], x1[idxs[:last]])
+        yy1 = np.maximum(y1[i], y1[idxs[:last]])
+        xx2 = np.minimum(x2[i], x2[idxs[:last]])
+        yy2 = np.minimum(y2[i], y2[idxs[:last]])
+        # compute the width and height of the bounding box
+        w = np.maximum(0, xx2 - xx1 + 1)
+        h = np.maximum(0, yy2 - yy1 + 1)
+        # compute the ratio of overlap
+        overlap = (w * h) / area[idxs[:last]]
+        # delete all indexes from the index list that have
+        idxs = np.delete(
+            idxs, np.concatenate(([last], np.where(overlap > overlapThresh)[0]))
+        )
+    # return only the bounding boxes that were picked using the
+    # integer data type
+    return pick
