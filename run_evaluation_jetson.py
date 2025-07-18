@@ -59,7 +59,6 @@ def main():
             continue
 
         t0 = time.time()
-
         is_night = False
         if "_E_" in str(image_path) or "_N_" in str(image_path):
             is_night = True

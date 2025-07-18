@@ -156,6 +156,7 @@ class DFineTRTModel:
         scores = output_tensors["scores"][0].cpu()
         
         if is_night:
+            print("Night mode detected, applying confidence boost.")
             scores += night_conf
 
         box_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
