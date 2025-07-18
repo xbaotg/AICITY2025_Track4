@@ -85,17 +85,16 @@ This guide outlines the process for setting up the Docker environment on a Jetso
 
 ## 📁 Directory Structure
 
-Ensure your `data` directory is structured as follows. The `.onnx` model file is required for conversion, and the `testset` contains the images for inference.
+Ensure your `data` directory is structured as follows. The `.onnx` model file is required for conversion, and the `testset` contains the images for inference. The checkpoints can be downloaded at this [Drive](https://drive.google.com/file/d/1qdWhG9jafp6IFyY3Vp3ptDmo-wVoyonE/view?usp=sharing).
 
 ```
 data/
 ├── testset/
 │   └── image001.png                # Example test image
-├── L_aip_vip_fsh_1600.onnx         # ONNX model for conversion
-└── L_aip_vip_fsh_1600.engine       # Output TensorRT engine (generated later)
+├── ckpts/
+│   └── L_aip_vip_fsh_1600.onnx         # ONNX model for conversion
+│   └── L_aip_vip_fsh_1600.engine       # Output TensorRT engine (generated later)
 ```
-
-> ⚠️ Place your `.onnx` model and `testset/` images inside the `data/` directory before starting.
 
 ---
 
@@ -131,7 +130,7 @@ docker run -it \
 Once inside the container, convert the `.onnx` model to a highly optimized TensorRT engine. This command uses FP16 precision for better performance.
 
 ```bash
-/usr/src/tensorrt/bin/trtexec --onnx=/data/L_aip_vip_fsh_1600.onnx --saveEngine=/data/L_aip_vip_fsh_1600.engine --fp16
+/usr/src/tensorrt/bin/trtexec --onnx=/data/ckpts/L_aip_vip_fsh_1600.onnx --saveEngine=/data/ckpts/L_aip_vip_fsh_1600.engine --fp16
 ```
 
 ---
@@ -141,7 +140,7 @@ Once inside the container, convert the `.onnx` model to a highly optimized Tenso
 Finally, run the evaluation script using the newly generated TensorRT engine:
 
 ```bash
-python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data/L_aip_vip_fsh_1600.engine
+python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data/ckpts/L_aip_vip_fsh_1600.engine
 ```
 
 ---
@@ -150,27 +149,29 @@ python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data
 
 This section details the full pipeline for preparing the datasets required for both the pre-training and fine-tuning stages. The process involves downloading multiple source datasets, generating pseudo labels, and applying data augmentation.
 
------
+The prepared dataset can be downloaded at [Drive](https://drive.google.com/file/d/150MoaZ9axrb0X2ieK2sVDw9z4aL6xKAN/view?usp=sharing), including pre-training & fine-tuning dataset.
+
+---
 
 ## 📥 Dataset Downloads
 
 First, download the following datasets which form the basis for our training data:
 
-  - **AIPCUP 2020:** [https://www.kaggle.com/datasets/awsaf49/aip-cup-2020-challenging-dataset/data](https://www.kaggle.com/datasets/awsaf49/aip-cup-2020-challenging-dataset/data)
-  - **VIPCUP 2020:** [https://www.kaggle.com/datasets/awsaf49/vip-cup-2020](https://www.kaggle.com/datasets/awsaf49/vip-cup-2020)
-  - **FishEye8K:** A large-scale fisheye camera dataset.
-  - **FishEye1K:** A smaller fisheye camera dataset.
+- **AIPCUP 2020:** [https://www.kaggle.com/datasets/awsaf49/aip-cup-2020-challenging-dataset/data](https://www.kaggle.com/datasets/awsaf49/aip-cup-2020-challenging-dataset/data)
+- **VIPCUP 2020:** [https://www.kaggle.com/datasets/awsaf49/vip-cup-2020](https://www.kaggle.com/datasets/awsaf49/vip-cup-2020)
+- **FishEye8K:** A large-scale fisheye camera dataset.
+- **FishEye1K:** A smaller fisheye camera dataset.
 
 > 📝 Please organize the downloaded datasets into a logical directory structure for easier access in the following steps.
 
------
+---
 
 ## 🏷️ Step 1: Pseudo Labeling
 
 We use a pre-trained model to generate initial object detection labels (pseudo labels) for the AIPCUP, VIPCUP, and FishEye datasets.
 
 1.  **Download the VNPT Model & Code**
-    Based on the source code released by [VNPT](https://github.com/vnptai/AICITY2024_Track4/), download the repository and its checkpoints. Place the entire contents into a folder named `VNPT` located at `prepare/pseudo/`.
+    Based on the source code released by [VNPT](https://github.com/vnptai/AICITY2024_Track4/), download the repository and its checkpoints [here](link). Place the entire contents into a folder named `VNPT` located at `prepare/pseudo/`.
 
 2.  **Generate Pseudo Labels**
     Navigate to the `prepare/pseudo` directory. Before executing, you **must edit `pseudo.sh`** to set the correct paths for your downloaded datasets and define the `output_folder` where the results will be stored (e.g., `aip_vip_fisheye`).
@@ -193,25 +194,25 @@ We use a pre-trained model to generate initial object detection labels (pseudo l
 
     > 💡 Replace the placeholders with the actual paths to your combined images, the `pseudo.json` file, and the target directory for the `.txt` labels.
 
------
+---
 
 ## 🛠️ Step 2: Generating the Fine-tuning Dataset
 
 This script splits the pseudo-labeled data into `train.json` and `val.json` files, which are required for the fine-tuning process.
 
-  - **Split Data for Fine-tuning:**
-    Run the following command, pointing it to the images and the YOLO-formatted labels you just created.
+- **Split Data for Fine-tuning:**
+  Run the following command, pointing it to the images and the YOLO-formatted labels you just created.
 
-    ```bash
-    python prepare_pretrain_data_all.py --images <path/to/aip_vip_fisheye_images> \
-                                        --labels <path/to/aip_vip_fisheye_labels> \
-                                        --output <path/to/directory/save/split/annotations> \
-                                        --type dfine
-    ```
+  ```bash
+  python prepare_pretrain_data_all.py --images <path/to/aip_vip_fisheye_images> \
+                                      --labels <path/to/aip_vip_fisheye_labels> \
+                                      --output <path/to/directory/save/split/annotations> \
+                                      --type dfine
+  ```
 
-    The output directory will contain the `train.json`, `val.json`, and `test.json` files needed for the `data/training/` directory as described in the main training guide.
+  The output directory will contain the `train.json`, `val.json`, and `test.json` files needed for the `data/training/` directory as described in the main training guide.
 
------
+---
 
 ## 🧬 Step 3: Generating the Pre-training Dataset
 
