@@ -17,7 +17,7 @@ data/
 │   └── L_aip_vip_fsh_1600.engine       # Output TensorRT engine (generated later)
 ```
 
-> `.onnx` model can be converted with this command: `python dfine/tools/deployment/export_onnx.py -c /data/ckpts/L_pre_aip_vip_fsh_1600.yml -r /data/ckpts/L_aip_vip_fsh_1600.pth --check --image-size 1600`
+> `.onnx` model can be converted using the training enviroment and run this command: `cd /app/dfine ; python tools/deployment/export_onnx.py -c /data/ckpts/L_pre_aip_vip_fsh_1600.yml -r /data/ckpts/L_aip_vip_fsh_1600.pth --check --image-size 1600`
 
 ---
 
