@@ -27,8 +27,8 @@ val_dataloader:
   type: DataLoader
   dataset:
     type: CocoDetection
-    img_folder: /data/training/images
-    ann_file: /data/training/val.json
+    img_folder: /data/training/pretrain_data/images
+    ann_file: /data/training/pretrain_data/val.json
     return_masks: False
     transforms:
       type: Compose

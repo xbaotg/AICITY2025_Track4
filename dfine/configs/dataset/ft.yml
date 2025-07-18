@@ -11,8 +11,8 @@ train_dataloader:
   type: DataLoader
   dataset:
     type: CocoDetection
-    img_folder: /data/training/images
-    ann_file: /data/training/train.json
+    img_folder: /data/training/finetune_data/images
+    ann_file: /data/training/finetune_data/train.json
     return_masks: False
     transforms:
       type: Compose
@@ -27,8 +27,8 @@ val_dataloader:
   type: DataLoader
   dataset:
     type: CocoDetection
-    img_folder: /data/training/images
-    ann_file: /data/training/val.json
+    img_folder: /data/training/finetune_data/images
+    ann_file: /data/training/finetune_data/val.json
     return_masks: False
     transforms:
       type: Compose

@@ -1,82 +1,3 @@
-# 🎯 Model Training Setup & Execution Guide
-
-This guide outlines the full process for setting up the data structure, building a Docker environment, and executing training within a containerized environment.
-
----
-
-## 📁 Directory Structure
-
-Set up the following directory structure to organize your model checkpoints and training data:
-
-```
-data/
-├── testset/                             # Images used for testing
-├── ckpts/
-│   └── dfine_l_obj2coco_e25.pth         # Pretrained checkpoint
-└── training/
-    ├── images/
-    │   └── camera10_A_354.png           # Example training image
-    ├── train.json                       # Training annotations
-    ├── val.json                         # Validation annotations
-    └── test.json                        # Test annotations
-```
-
-### 🔗 Downloads
-
-- **📦 Pretrained Checkpoint**
-  Download the required model checkpoint from:
-  [dfine_l_obj2coco_e25.pth](https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth)
-
-- **📁 Training Data**
-  Download the dataset (including `images/`, `train.json`, `val.json`, `test.json`) from:
-  `[Insert Your Dataset URL Here]`
-
-> ⚠️ Make sure to place the downloaded checkpoint under `data/ckpts/` and the dataset under `data/training/`.
-
----
-
-## 🐳 Build the Docker Image
-
-Use the following command to build the Docker image from the provided Dockerfile:
-
-```bash
-docker build -t track4 -f Dockerfile.train .
-```
-
----
-
-## 🚀 Run the Docker Container
-
-Mount the `data/` directory into the container and enable GPU access:
-
-```bash
-docker run -it \
-  -v /path/to/data:/data \
-  --gpus all \
-  --name test_track4 \
-  track4:latest bash
-```
-
-> 💡 Replace `/path/to/data` with the absolute path to your `data/` directory.
-
----
-
-## 🏋️‍♂️ Launch the Training
-
-Once inside the container, start the training process by running:
-
-```bash
-# Pre-training
-bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_pre.yml /data/ckpts/dfine_l_obj2coco_e25.pth
-
-# Fine-tuning
-bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_ft.yml trained/pretrained/last.pth
-```
-
-This command launches training with the specified configuration and checkpoint.
-
----
-
 # 🚀 Inference Guide (Jetson)
 
 This guide outlines the process for setting up the Docker environment on a Jetson device, converting the model, and running inference.
@@ -85,7 +6,7 @@ This guide outlines the process for setting up the Docker environment on a Jetso
 
 ## 📁 Directory Structure
 
-Ensure your `data` directory is structured as follows. The `.onnx` model file is required for conversion, and the `testset` contains the images for inference. The checkpoints can be downloaded at this [Drive](https://drive.google.com/file/d/1qdWhG9jafp6IFyY3Vp3ptDmo-wVoyonE/view?usp=sharing).
+Ensure your `data` directory is structured as follows. The `.onnx` model file is required for conversion, and the `testset` contains the images for inference. The checkpoints can be downloaded at this [Drive](https://drive.google.com/file/d/1wUwd7MuCc_MR4pDKVMK9olyUmJde7S8M/view?usp=sharing).
 
 ```
 data/
@@ -95,6 +16,8 @@ data/
 │   └── L_aip_vip_fsh_1600.onnx         # ONNX model for conversion
 │   └── L_aip_vip_fsh_1600.engine       # Output TensorRT engine (generated later)
 ```
+
+> `.onnx` model can be converted with this command: `python dfine/tools/deployment/export_onnx.py -c /data/ckpts/L_pre_aip_vip_fsh_1600.yml -r /data/ckpts/L_aip_vip_fsh_1600.pth --check --image-size 1600`
 
 ---
 
@@ -145,6 +68,85 @@ python run_evaluation_jetson.py --image_folder /data/testset/ --model_path /data
 
 ---
 
+# 🎯 Model Training Setup & Execution Guide
+
+This guide outlines the full process for setting up the data structure, building a Docker environment, and executing training within a containerized environment.
+
+---
+
+## 📁 Directory Structure
+
+Set up the following directory structure to organize your model checkpoints and training data:
+
+```
+data/
+├── testset/                             # Images used for testing
+├── ckpts/
+│   └── dfine_l_obj2coco_e25.pth         # Pretrained checkpoint
+└── training/
+    ├── images/
+    │   └── camera10_A_354.png           # Example training image
+    ├── train.json                       # Training annotations
+    ├── val.json                         # Validation annotations
+    └── test.json                        # Test annotations
+```
+
+### 🔗 Downloads
+
+- **📦 Pretrained Checkpoint**
+  Download the required model checkpoint from:
+  [dfine_l_obj2coco_e25.pth](https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_l_obj2coco_e25.pth)
+
+- **📁 Training Data**
+  Download the dataset (including `images/`, `train.json`, `val.json`, `test.json`) from:
+  [Drive](https://drive.google.com/file/d/150MoaZ9axrb0X2ieK2sVDw9z4aL6xKAN/view?usp=sharing)
+
+> ⚠️ Make sure to place the downloaded checkpoint under `data/ckpts/` and the dataset under `data/training/`.
+
+---
+
+## 🐳 Build the Docker Image
+
+Use the following command to build the Docker image from the provided Dockerfile:
+
+```bash
+docker build -t track4 -f Dockerfile.train .
+```
+
+---
+
+## 🚀 Run the Docker Container
+
+Mount the `data/` directory into the container and enable GPU access:
+
+```bash
+docker run -it \
+  -v /path/to/data:/data \
+  --gpus all \
+  --name test_track4 \
+  track4:latest bash
+```
+
+> 💡 Replace `/path/to/data` with the absolute path to your `data/` directory.
+
+---
+
+## 🏋️‍♂️ Launch the Training
+
+Once inside the container, start the training process by running:
+
+```bash
+# Pre-training
+bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_pre.yml /data/ckpts/dfine_l_obj2coco_e25.pth
+
+# Fine-tuning
+bash train.sh configs/dfine/L_pre_aip_vip_fsh_1600_ft.yml trained/pretrained/last.pth
+```
+
+This command launches training with the specified configuration and checkpoint.
+
+---
+
 # Data Preparation
 
 This section details the full pipeline for preparing the datasets required for both the pre-training and fine-tuning stages. The process involves downloading multiple source datasets, generating pseudo labels, and applying data augmentation.
@@ -171,7 +173,7 @@ First, download the following datasets which form the basis for our training dat
 We use a pre-trained model to generate initial object detection labels (pseudo labels) for the AIPCUP, VIPCUP, and FishEye datasets.
 
 1.  **Download the VNPT Model & Code**
-    Based on the source code released by [VNPT](https://github.com/vnptai/AICITY2024_Track4/), download the repository and its checkpoints [here](link). Place the entire contents into a folder named `VNPT` located at `prepare/pseudo/`.
+    Based on the source code released by [VNPT](https://github.com/vnptai/AICITY2024_Track4/), download the repository and its checkpoints [here](https://drive.google.com/file/d/1NlcKlrTaqcr1D5aKZ5hwsv_N54IYS87X/view?usp=sharing). Place the entire contents into a folder named `VNPT` located at `prepare/pseudo/`.
 
 2.  **Generate Pseudo Labels**
     Navigate to the `prepare/pseudo` directory. Before executing, you **must edit `pseudo.sh`** to set the correct paths for your downloaded datasets and define the `output_folder` where the results will be stored (e.g., `aip_vip_fisheye`).
