@@ -1,3 +1,4 @@
 FROM ultralytics/ultralytics:latest-jetson-jetpack6
 
 WORKDIR /app
+COPY . .
